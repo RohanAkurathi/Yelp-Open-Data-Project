@@ -63,6 +63,8 @@ RANK_EVAL_USERS = 12_000   # users sampled for the held-out test evaluation
 # ── Semantic search ──────────────────────────────────────────────────────────────
 BASE_EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBED_SAMPLE_REVIEWS = 120_000   # reviews encoded into the FAISS index for the demo
+MAX_SEQ_LEN = 128                # truncate reviews to 128 tokens (lighter + faster on MPS)
 FINETUNE_PAIRS = 25_000          # (review, same-business review) pairs for fine-tuning
 FINETUNE_EPOCHS = 1
-EMBED_BATCH = 256
+FINETUNE_BATCH = 32              # small batches keep training within the M1's unified memory
+EMBED_BATCH = 256                # inference encoding has no gradients, so a big batch is fine

@@ -14,7 +14,10 @@ shap>=0.44             # ranker interpretability
 # Semantic search
 torch
 sentence-transformers>=3.0
+datasets            # required by sentence-transformers' trainer
+accelerate          # required by sentence-transformers' trainer
 faiss-cpu
+anthropic           # optional: LLM-written taste profiles (set ANTHROPIC_API_KEY)
 
 # Visualisation / app
 matplotlib>=3.7
