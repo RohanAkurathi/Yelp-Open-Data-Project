@@ -100,6 +100,24 @@ def main():
               f"Recall@{C.RANK_EVAL_K}={m[f'Recall@{C.RANK_EVAL_K}']:.4f}  "
               f"MAP@{C.RANK_EVAL_K}={m[f'MAP@{C.RANK_EVAL_K}']:.4f}")
 
+    # save a sample of two-stage recommendations (with "actually visited" flags)
+    # so the app can show real per-user picks, not just aggregate metrics
+    ts_ranks = rk.rank_candidates(eval_frame, "lightgbm", model=model)
+    names = biz.set_index("business_id")[["name", "city", "categories"]]
+    demo = []
+    for u in list(ts_ranks)[:600]:
+        rel = relevance.get(u, {})
+        for rank, b in enumerate(ts_ranks[u][:C.RANK_EVAL_K], 1):
+            meta = names.loc[b] if b in names.index else None
+            demo.append({
+                "user_id": u, "rank": rank, "business_id": b,
+                "name": meta["name"] if meta is not None else b,
+                "city": meta["city"] if meta is not None else "",
+                "categories": meta["categories"] if meta is not None else "",
+                "visited_in_test": b in rel,
+            })
+    pd.DataFrame(demo).to_parquet(C.ARTIFACTS / "demo_recs.parquet", index=False)
+
     table = ev.comparison_table(results)
     table.to_csv(C.REPORTS / "recsys_metrics.csv")
     (C.REPORTS / "recsys_metrics.md").write_text(

@@ -13,7 +13,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-sys.path.insert(0, str(Path(__file__).parent))
+ROOT = Path(__file__).parent
+sys.path.insert(0, str(ROOT))
 
 from src import analysis as az
 from src.data_loader import load_business, load_reviews, load_users
@@ -66,7 +67,8 @@ with st.sidebar:
     st.markdown("---")
     page = st.radio(
         "Section",
-        ["Overview", "Businesses", "Reviews", "Users", "Geography"],
+        ["Overview", "Businesses", "Reviews", "Users", "Geography",
+         "🎯 Recommender", "🔍 Semantic Search", "👤 Taste Profile"],
         index=0,
     )
     st.markdown("---")
@@ -86,9 +88,11 @@ with st.sidebar:
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 
-biz = get_business()
-rev = get_reviews(n_reviews)
-usr = get_users(n_users)
+EDA_PAGES = {"Overview", "Businesses", "Reviews", "Users", "Geography"}
+if page in EDA_PAGES:
+    biz = get_business()
+    rev = get_reviews(n_reviews)
+    usr = get_users(n_users)
 
 
 # ── Overview ──────────────────────────────────────────────────────────────────
@@ -346,3 +350,111 @@ elif page == "Geography":
     st.plotly_chart(fig, use_container_width=True)
 
     st.info("For a full heatmap, run `python run_analysis.py` — it saves an interactive HTML map to outputs/business_heatmap.html")
+
+
+# ── Recommender ─────────────────────────────────────────────────────────────────
+
+elif page == "🎯 Recommender":
+    st.title("🎯 Two-Stage Recommender")
+    st.markdown(
+        "ALS proposes candidate restaurants for each user; a LightGBM LambdaMART "
+        "model reranks them using 40+ behavioural, quality and matching features. "
+        "Evaluated on a **held-out future window** so we always predict the unseen."
+    )
+
+    metrics_csv = ROOT / "outputs" / "reports" / "recsys_metrics.csv"
+    if not metrics_csv.exists():
+        st.warning("Run `python pipelines/train_recommender.py` first to generate results.")
+    else:
+        df = pd.read_csv(metrics_csv, index_col=0)
+        k = 10
+        cols = st.columns(3)
+        ts = "two-stage (LightGBM)"
+        cols[0].metric(f"NDCG@{k}", f"{df.loc[ts, f'NDCG@{k}']:.4f}",
+                       f"{df.loc[ts, f'NDCG@{k} lift%']:.0f}% vs popularity")
+        cols[1].metric(f"Recall@{k}", f"{df.loc[ts, f'Recall@{k}']:.4f}")
+        cols[2].metric(f"MAP@{k}", f"{df.loc[ts, f'MAP@{k}']:.4f}")
+
+        c1, c2 = st.columns(2)
+        c1.image(str(ROOT / "outputs/plots/recsys_metrics.png"), caption="Held-out ranking quality")
+        c2.image(str(ROOT / "outputs/plots/shap_beeswarm.png"), caption="What drives the ranker (SHAP)")
+
+        demo = ROOT / "artifacts" / "demo_recs.parquet"
+        if demo.exists():
+            st.subheader("Sample recommendations")
+            recs = pd.read_parquet(demo)
+            uid = st.selectbox("User", sorted(recs["user_id"].unique())[:300])
+            sub = recs[recs["user_id"] == uid].sort_values("rank")
+            hits = int(sub["visited_in_test"].sum())
+            st.caption(f"✅ {hits} of these top-{k} picks were actually visited in the held-out period.")
+            view = sub[["rank", "name", "city", "categories", "visited_in_test"]].rename(
+                columns={"visited_in_test": "visited (held-out)"})
+            st.dataframe(view, use_container_width=True, hide_index=True)
+
+
+# ── Semantic Search ─────────────────────────────────────────────────────────────
+
+elif page == "🔍 Semantic Search":
+    st.title("🔍 Semantic Search")
+    st.markdown(
+        "Free-text search over review *meaning* using a fine-tuned sentence encoder "
+        "and a FAISS index. Try a vibe, not keywords."
+    )
+    if not (ROOT / "artifacts" / "faiss.index").exists():
+        st.warning("Run `python pipelines/build_search.py` first to build the index.")
+    else:
+        from src.search.search import get_engine
+
+        examples = [
+            "cozy spot with great oat-milk lattes",
+            "authentic spicy ramen with rich broth",
+            "romantic date-night Italian with good wine",
+            "cheap late-night tacos",
+        ]
+        query = st.text_input("Search", value=examples[0])
+        st.caption("Examples: " + "  ·  ".join(f"*{e}*" for e in examples))
+        if query:
+            with st.spinner("Embedding query and searching…"):
+                engine = get_engine()
+                results = engine.search_businesses(query, k=10)
+            for _, r in results.iterrows():
+                st.markdown(
+                    f"**{r['name']}** — {r['city']}  ·  {r['stars']}★  ·  "
+                    f"match {r['match']:.2f}  \n"
+                    f"<span style='color:#666'>{r['categories']}</span>  \n"
+                    f"<span style='color:#888;font-style:italic'>{r['snippet']}</span>",
+                    unsafe_allow_html=True,
+                )
+                st.divider()
+
+
+# ── Taste Profile ───────────────────────────────────────────────────────────────
+
+elif page == "👤 Taste Profile":
+    st.title("👤 Taste Profile")
+    st.markdown(
+        "Each user's history is distilled into a taste summary and a *taste vector* "
+        "(the centroid of the places they liked), which drives content-based picks."
+    )
+    if not (ROOT / "artifacts" / "corpus_emb.npy").exists():
+        st.warning("Run `python pipelines/build_search.py` first.")
+    else:
+        from src.search import taste_profiles as tp
+
+        recs_demo = ROOT / "artifacts" / "demo_recs.parquet"
+        users = sorted(pd.read_parquet(recs_demo)["user_id"].unique())[:300] if recs_demo.exists() else []
+        uid = st.selectbox("User", users) if users else st.text_input("user_id")
+        if uid:
+            with st.spinner("Building profile…"):
+                prof = tp.build_profile(uid)
+                picks = tp.recommend_by_taste(uid, k=8)
+            st.info(f"**Profile** ({prof['source']}): {prof['profile']}")
+            s = prof["stats"]
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Reviews", s["n_reviews"])
+            c2.metric("Avg rating given", f"{s['avg_stars']}★")
+            c3.metric("Price point", s["price_pref"])
+            st.write("**Favourite cuisines:** " + ", ".join(s["top_categories"]))
+            if len(picks):
+                st.subheader("More places you'd like (content-based)")
+                st.dataframe(picks, use_container_width=True, hide_index=True)
