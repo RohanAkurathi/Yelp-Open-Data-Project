@@ -1,13 +1,25 @@
-pandas>=2.0.0
-numpy>=1.24.0
-matplotlib>=3.7.0
-seaborn>=0.12.0
-plotly>=5.14.0
-wordcloud>=1.9.0
-nltk>=3.8.0
-scikit-learn>=1.3.0
-streamlit>=1.25.0
-jupyter>=1.0.0
-folium>=0.14.0
-tqdm>=4.65.0
-textblob>=0.17.1
+# Core
+numpy<2
+scipy
+pandas>=2.0
+scikit-learn>=1.3
+pyarrow
+tqdm
+
+# Recommender
+implicit>=0.7          # ALS candidate generation
+lightgbm>=4.0          # LambdaMART ranker
+shap>=0.44             # ranker interpretability
+
+# Semantic search
+torch
+sentence-transformers>=3.0
+faiss-cpu
+
+# Visualisation / app
+matplotlib>=3.7
+seaborn>=0.12
+plotly>=5.14
+streamlit>=1.25
+wordcloud>=1.9
+folium>=0.14

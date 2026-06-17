@@ -1,8 +1,11 @@
-# Data files (too large for git)
+# Raw dataset (too large for git — download from yelp.com/dataset)
 data/
 Yelp JSON/
 *.tar
 *.zip
+
+# Generated models, indexes, parquet (rebuilt by the pipelines)
+artifacts/
 
 # Python
 __pycache__/
@@ -14,6 +17,7 @@ __pycache__/
 dist/
 build/
 .env
+.venv/
 venv/
 env/
 
@@ -21,11 +25,11 @@ env/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# Generated outputs
-outputs/plots/*.png
-outputs/plots/*.jpg
-outputs/plots/*.svg
-outputs/reports/*.html
+# Hugging Face / torch caches
+.cache/
+
+# Generated HTML (maps etc.); figures under outputs/plots ARE tracked
+outputs/*.html
 
 # OS
 .DS_Store
