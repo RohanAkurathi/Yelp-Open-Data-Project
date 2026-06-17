@@ -57,6 +57,8 @@ N_CANDIDATES = 100         # candidates handed from stage 1 to stage 2 per user
 
 # ── Ranking (stage 2: LightGBM LambdaMART) ───────────────────────────────────────
 RANK_EVAL_K = 10           # the K in NDCG@K / Recall@K we report
+RANK_TRAIN_USERS = 20_000  # users sampled to train the ranker (those with valid positives)
+RANK_EVAL_USERS = 12_000   # users sampled for the held-out test evaluation
 
 # ── Semantic search ──────────────────────────────────────────────────────────────
 BASE_EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
