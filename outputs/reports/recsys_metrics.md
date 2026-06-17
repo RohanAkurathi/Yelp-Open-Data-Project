@@ -1,0 +1,9 @@
+# Two-stage recommender — held-out test results
+
+Evaluated on 12,000 users from the held-out TEST period (reviews after the train/valid cutoff).
+
+| method | NDCG@10 | NDCG@10 lift% | Recall@10 | Recall@10 lift% | MAP@10 | MAP@10 lift% | n_users |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| popularity | 0.0199 | 0 | 0.0296 | 0 | 0.0103 | 0 | 12000 |
+| als | 0.0288 | 45.1235 | 0.0399 | 35.1401 | 0.0165 | 59.9008 | 12000 |
+| two-stage (LightGBM) | 0.0362 | 82.02 | 0.05 | 69.2079 | 0.0202 | 96.2409 | 12000 |
